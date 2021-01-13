@@ -142,7 +142,7 @@ class Fr {
         return this.value === rhs.value;
     }
     negate() {
-        return new Fr(-this.value);
+        return new this.constructor(-this.value);
     }
     invert() {
         let [x0, x1, y0, y1] = [1n, 0n, 0n, 1n];
@@ -154,24 +154,24 @@ class Fr {
             [x0, x1] = [x1, x0 - q * x1];
             [y0, y1] = [y1, y0 - q * y1];
         }
-        return new Fr(x0);
+        return new this.constructor(x0);
     }
     add(rhs) {
-        return new Fr(this.value + rhs.value);
+        return new this.constructor(this.value + rhs.value);
     }
     square() {
-        return new Fr(this.value * this.value);
+        return new this.constructor(this.value * this.value);
     }
     pow(n) {
-        return new Fr(powMod(this.value, n, Fr.ORDER));
+        return new this.constructor(powMod(this.value, n, Fr.ORDER));
     }
     subtract(rhs) {
-        return new Fr(this.value - rhs.value);
+        return new this.constructor(this.value - rhs.value);
     }
     multiply(rhs) {
         if (rhs instanceof Fr)
             rhs = rhs.value;
-        return new Fr(this.value * rhs);
+        return new this.constructor(this.value * rhs);
     }
     div(rhs) {
         const inv = typeof rhs === 'bigint' ? new Fr(rhs).invert().value : rhs.invert();
@@ -209,7 +209,7 @@ class Fr {
             t = mod(t * c, P);
             s = i;
         }
-        return new Fr(r);
+        return new this.constructor(r);
     }
     toString() {
         return '0x' + this.value.toString(16).padStart(64, '0');
@@ -723,7 +723,7 @@ class ProjectivePoint {
         return this.getPoint(this.C.ONE, this.C.ONE, this.C.ZERO);
     }
     equals(rhs) {
-        if (this.constructor != rhs.constructor)
+        if (!this instanceof rhs.constructor)
             throw new Error(`ProjectivePoint#equals: this is ${this.constructor}, but rhs is ${rhs.constructor}`);
         const a = this;
         const b = rhs;
@@ -768,7 +768,7 @@ class ProjectivePoint {
         return this.getPoint(X3, Y3, Z3);
     }
     add(rhs) {
-        if (this.constructor != rhs.constructor)
+        if (!this instanceof rhs.constructor)
             throw new Error(`ProjectivePoint#add: this is ${this.constructor}, but rhs is ${rhs.constructor}`);
         const p1 = this;
         const p2 = rhs;
@@ -803,13 +803,15 @@ class ProjectivePoint {
         return this.getPoint(X3, Y3, Z3);
     }
     subtract(rhs) {
-        if (this.constructor != rhs.constructor)
+        if (!this instanceof rhs.constructor)
             throw new Error(`ProjectivePoint#subtract: this is ${this.constructor}, but rhs is ${rhs.constructor}`);
         return this.add(rhs.negate());
     }
     multiplyUnsafe(scalar) {
         let n = scalar;
         if (n instanceof Fq)
+            n = n.value;
+        if (n instanceof Fr)
             n = n.value;
         if (typeof n === 'number')
             n = BigInt(n);
@@ -890,6 +892,8 @@ class ProjectivePoint {
     multiply(scalar) {
         let n = scalar;
         if (n instanceof Fq)
+            n = n.value;
+        if (n instanceof Fr)
             n = n.value;
         if (typeof n === 'number')
             n = BigInt(n);
