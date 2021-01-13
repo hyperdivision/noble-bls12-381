@@ -1,6 +1,7 @@
 "use strict";
 /*! noble-bls12-381 - MIT License (c) Paul Miller (paulmillr.com) */
 Object.defineProperty(exports, "__esModule", { value: true });
+const Sha256 = require('sha256-wasm')
 exports.verifyBatch = exports.aggregateSignatures = exports.aggregatePublicKeys = exports.verify = exports.sign = exports.getPublicKey = exports.pairing = exports.PointG2 = exports.clearCofactorG2 = exports.PointG1 = exports.hash_to_field = exports.utils = exports.CURVE = exports.Fq12 = exports.Fq2 = exports.Fr = exports.Fq = exports.DST_LABEL = void 0;
 const math_1 = require("./math");
 Object.defineProperty(exports, "Fq", { enumerable: true, get: function () { return math_1.Fq; } });
@@ -16,20 +17,8 @@ const POW_2_383 = POW_2_382 * 2n;
 const PUBLIC_KEY_LENGTH = 48;
 const SHA256_DIGEST_SIZE = 32n;
 exports.utils = {
-    async sha256(message) {
-        if (typeof window == 'object' && 'crypto' in window) {
-            const buffer = await window.crypto.subtle.digest('SHA-256', message.buffer);
-            return new Uint8Array(buffer);
-        }
-        else if (typeof process === 'object' && 'node' in process.versions) {
-            const { createHash } = require('crypto');
-            const hash = createHash('sha256');
-            hash.update(message);
-            return Uint8Array.from(hash.digest());
-        }
-        else {
-            throw new Error("The environment doesn't have sha256 function");
-        }
+    sha256: (m) => {
+        return new Sha256().update(m).digest()
     },
     randomPrivateKey: (bytesLength = 32) => {
         if (typeof window == 'object' && 'crypto' in window) {
@@ -143,7 +132,7 @@ function strxor(a, b) {
     }
     return arr;
 }
-async function expand_message_xmd(msg, DST, len_in_bytes) {
+function expand_message_xmd(msg, DST, len_in_bytes) {
     const H = exports.utils.sha256;
     const b_in_bytes = Number(SHA256_DIGEST_SIZE);
     const r_in_bytes = b_in_bytes * 2;
@@ -154,22 +143,22 @@ async function expand_message_xmd(msg, DST, len_in_bytes) {
     const Z_pad = i2osp(0, r_in_bytes);
     const l_i_b_str = i2osp(len_in_bytes, 2);
     const b = new Array(ell);
-    const b_0 = await H(concatBytes(Z_pad, msg, l_i_b_str, i2osp(0, 1), DST_prime));
-    b[0] = await H(concatBytes(b_0, i2osp(1, 1), DST_prime));
+    const b_0 = H(concatBytes(Z_pad, msg, l_i_b_str, i2osp(0, 1), DST_prime));
+    b[0] = H(concatBytes(b_0, i2osp(1, 1), DST_prime));
     for (let i = 1; i <= ell; i++) {
         const args = [strxor(b_0, b[i - 1]), i2osp(i + 1, 1), DST_prime];
-        b[i] = await H(concatBytes(...args));
+        b[i] = H(concatBytes(...args));
     }
     const pseudo_random_bytes = concatBytes(...b);
     return pseudo_random_bytes.slice(0, len_in_bytes);
 }
-async function hash_to_field(msg, degree, isRandomOracle = true) {
+function hash_to_field(msg, degree, isRandomOracle = true) {
     const count = isRandomOracle ? 2 : 1;
     const m = degree;
     const L = 64;
     const len_in_bytes = count * m * L;
     const DST = stringToBytes(exports.DST_LABEL);
-    const pseudo_random_bytes = await expand_message_xmd(msg, DST, len_in_bytes);
+    const pseudo_random_bytes = expand_message_xmd(msg, DST, len_in_bytes);
     const u = new Array(count);
     for (let i = 0; i < count; i++) {
         const e = new Array(m);
@@ -258,10 +247,10 @@ class PointG2 extends math_1.ProjectivePoint {
     constructor(x, y, z) {
         super(x, y, z, math_1.Fq2);
     }
-    static async hashToCurve(msg) {
+    static hashToCurve(msg) {
         if (typeof msg === 'string')
             msg = hexToBytes(msg);
-        const u = await hash_to_field(msg, 2);
+        const u = hash_to_field(msg, 2);
         const Q0 = new PointG2(...math_1.isogenyMapG2(math_1.map_to_curve_SSWU_G2(u[0])));
         const Q1 = new PointG2(...math_1.isogenyMapG2(math_1.map_to_curve_SSWU_G2(u[1])));
         const R = Q0.add(Q1);

@@ -48,5 +48,8 @@
     "pairing",
     "cryptography",
     "security"
-  ]
+  ],
+  "dependencies": {
+    "sha256-wasm": "^2.1.2"
+  }
 }
